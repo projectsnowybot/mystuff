@@ -11,7 +11,7 @@ from datetime import datetime
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
                              QWidget, QLabel, QTextEdit)
 from PyQt5.QtCore import QTimer, QUrl, Qt, QObject, pyqtSlot, QFile, QIODevice
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEngineScript, QWebEngineSettings
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEngineScript, QWebEngineSettings, QWebEnginePage
 from PyQt5.QtWebChannel import QWebChannel
 from bs4 import BeautifulSoup
 
@@ -22,7 +22,7 @@ u = input("Enter username: ")
 p = getpass.getpass("Enter password: ")
 
 URL = "https://just-dice.com"
-STATE_FILE = "bot_state.json"
+STATE_FILE = ".snowybot.json"
 
 
 class WebBridge(QObject):
@@ -53,13 +53,13 @@ class BotEngine(QMainWindow):
         self.prev_wins = None
         self.prev_losses = None
         
-        self.cat = 0.0
+        self.neXtbet = 0.0
         self.bolux = 0.0
-        self.felix = 0.0
-        self.orgy = 0.0
-        self.orgytwo = 0.0
-        self.fart = 1
-        self.tabby = 0.0
+        self.oldsevensbalance = 0.0
+        self.oldupbalance = 0.0
+        self.olddownbalance = 0.0
+        self.basetimes = 14
+        self.basebet = 0.0
         self.tens = 0.0
         self.sevens = 0.0
         self.eights = 0.0
@@ -73,6 +73,9 @@ class BotEngine(QMainWindow):
         self.balnce = "0.0"
         self.wons = "0"
         self.losses = "0"
+        
+        # Connection management flag
+        self.is_reconnecting = False
 
         # Browser Setup
         self.browser_view = QWebEngineView()
@@ -85,7 +88,8 @@ class BotEngine(QMainWindow):
         self.channel.registerObject("pyBridge", self.bridge_object)
         self.browser_view.page().setWebChannel(self.channel)
 
-        # Removed self.deploy_dom_observer link from here to prevent premature pre-login scanning
+        # Monitor connection failures and load status changes
+        self.browser_view.page().loadFinished.connect(self.handle_load_finished)
 
         self.bet_in_flight = False
         self.last_activity_time = time.time()
@@ -97,13 +101,51 @@ class BotEngine(QMainWindow):
         self.log("System initialized. Running in Headless Server Mode...")
         self.browser_view.setUrl(QUrl(URL))
         
-        # Give the initial site layout 35 seconds to stabilize completely before triggering our login interaction
         QTimer.singleShot(35000, self.kjool_look)
 
     def log(self, msg):
         print(f"{msg}")
 
+    def handle_load_finished(self, success):
+        if not success:
+            self.log("🚨 Network interface changed or link dropped. Pausing engine...")
+            self.trigger_network_reconnect()
+
+    def trigger_network_reconnect(self):
+        if self.is_reconnecting:
+            return
+            
+        self.is_reconnecting = True
+        self.is_running = False
+        self.engine_timer.stop()
+        self.bet_in_flight = False
+        
+        self.prev_balance = None
+        self.prev_wins = None
+        self.prev_losses = None
+        
+        self.log("📡 Scheduling page reload in 10 seconds...")
+        QTimer.singleShot(10000, self.execute_reconnect_retry)
+
+    def execute_reconnect_retry(self):
+        self.log("🔄 Executing interface reload...")
+        self.browser_view.reload()
+        QTimer.singleShot(20000, self.verify_reconnection_status)
+
+    def verify_reconnection_status(self):
+        self.browser_view.page().runJavaScript(
+            "document.getElementsByClassName('name_button').length", 
+            self.confirm_reconnect_page_state
+        )
+
+    def confirm_reconnect_page_state(self, result):
+            self.log("🟢 Connection trying. Loading state coordinates...")
+            self.is_reconnecting = False
+            self.kjool_look()
+
     def kjool_look(self):
+        if self.is_reconnecting: 
+            return
         try: 
            self.browser_view.page().runJavaScript("document.getElementsByClassName('name_button')[0].click()")
         except Exception as e:
@@ -113,6 +155,7 @@ class BotEngine(QMainWindow):
         QTimer.singleShot(5000, self.inject_login)
 
     def inject_login(self):
+        if self.is_reconnecting: return
         if not u or not p: return
 
         js = f"""
@@ -138,36 +181,37 @@ class BotEngine(QMainWindow):
         """
         self.browser_view.page().runJavaScript(js)
         self.log("⏳ Running login handshake protocol...")
-        
-        # 🚨 THE FIX: Wait 12 seconds after clicking login to ensure the server finishes 
-        # authentication before we ever read our first balance.
         QTimer.singleShot(12000, self.start_post_login_scrapers)
 
     def start_post_login_scrapers(self):
+        if self.is_reconnecting: 
+            return
         self.log("🔓 Login pipeline finalized. Initializing data trackers...")
         self.deploy_dom_observer()
 
     def check_ready(self):
+        if self.is_reconnecting: return
         page = self.browser_view.page()
-        # Direct execution lookup into the DOM memory structure
         page.runJavaScript(
             "document.getElementById('pct_balance') ? document.getElementById('pct_balance').value : null", 
             self.handle_python_value_read
         )
 
     def handle_python_value_read(self, val):
+        if self.is_reconnecting: 
+            return
         if val is None or str(val) == "null" or str(val).strip() == "":
             print("⏳ Balance element value unreadable. Retrying...")
-            QTimer.singleShot(2000, self.check_ready)
+            QTimer.singleShot(2000, self.trigger_network_reconnect)
             return
 
         try:
             cleaned_val = "".join(c for c in str(val) if c.isdigit() or c in ".-")
             balance = float(cleaned_val)
             
+            #self.log(f"🎯 Value Extracted successfully: {balance:.8f}")
             self.balnce = str(balance)
             
-            # If we aren't running yet, trigger initialization verification
             if not self.is_running:
                 self.verify_login()
                 
@@ -176,6 +220,7 @@ class BotEngine(QMainWindow):
             QTimer.singleShot(2000, self.check_ready)
 
     def verify_login(self):
+        if self.is_reconnecting: return
         try:
             balance = float(self.balnce)
         except Exception as e:
@@ -187,12 +232,15 @@ class BotEngine(QMainWindow):
         QTimer.singleShot(1500, self.toggle_engine)
 
     def deploy_wins(self):
+        if self.is_reconnecting: return
         self.browser_view.page().runJavaScript("document.getElementById('wins').innerText.replaceAll(',', '')", self.winning_wins)
    
     def deploy_loss(self):
+        if self.is_reconnecting: return
         self.browser_view.page().runJavaScript("document.getElementById('losses').innerText.replaceAll(',', '')", self.lossing_loses)
 
     def deploy_balance(self): 
+        if self.is_reconnecting: return
         self.check_ready()
 
     def deploy_dom_observer(self):
@@ -207,6 +255,7 @@ class BotEngine(QMainWindow):
         self.losses = losses if losses else "0"
    
     def evaluate_financial_sync(self):
+        if self.is_reconnecting: return
         self.deploy_dom_observer()
         current_wins = float(self.wons)
         current_losses = float(self.losses)
@@ -253,7 +302,7 @@ class BotEngine(QMainWindow):
     def save_state(self):
         try:
             data = {
-                "cat": self.cat, "tabby": self.tabby, "felix": self.felix, "orgy": self.orgy, "orgytwo": self.orgytwo, "fart": self.fart,
+                "neXtbet": self.neXtbet, "basebet": self.basebet, "oldsevensbalance": self.oldsevensbalance, "oldupbalance": self.oldupbalance, "olddownbalance": self.olddownbalance, "basetimes": self.basetimes,
                 "tracked_balance": self.tracked_balance, "initial_balance": self.initial_balance,
                 "last_balance": self.last_balance, "next_compound": self.next_compound, 
                 "uppers": self.uppers, "downers": self.downers
@@ -266,15 +315,15 @@ class BotEngine(QMainWindow):
     def calculate_units(self, balance):
         self.state_data = self.load_state_file()
         if balance == 0: 
-            self.tabby = 0.00000001
+            self.basebet = 0.00000001
         elif self.state_data:
-            self.tabby = self.state_data.get("tabby")
+            self.basebet = self.state_data.get("basebet")
         else:
-            self.tabby = round(balance / 14400, 8)
+            self.basebet = round(balance / 14400, 8)
         
-        self.tens = self.tabby * 10.0
-        self.sevens = self.tabby * 6.9
-        self.eights = self.tabby * 7.9
+        self.tens = self.basebet * 10.0
+        self.sevens = self.basebet * 6.9
+        self.eights = self.basebet * 7.9
         self.uppers = 6.9
         self.downers = 2.9
 
@@ -284,31 +333,33 @@ class BotEngine(QMainWindow):
         
         if self.state_data:
             self.log("📂 Resuming tracking matrices from cache registry...")
-            self.cat = self.state_data.get("cat", self.tabby)
-            self.fart = int(self.state_data.get("fart", 1))
+            self.neXtbet = self.state_data.get("neXtbet", self.basebet)
+            self.basetimes = int(self.state_data.get("basetimes", 14))
             self.initial_balance = self.state_data.get("initial_balance", real_bal)
             last_saved = self.state_data.get("last_balance", real_bal)
             drift = real_bal - last_saved
             self.tracked_balance = round(self.state_data.get("tracked_balance", real_bal) + drift, 8)
             self.next_compound = self.state_data.get("next_compound", self.tracked_balance * 1.24)
             self.shadow = 0.0
-            self.mighty = round(((math.floor(self.tracked_balance / self.tens))* self.tens), 8)
-            self.felix = self.state_data.get("felix", float(self.mighty))
-            self.orgy = self.state_data.get("orgy", float(self.mighty))
-            self.orgytwo = self.state_data.get("orgy", float(self.mighty))
+            self.lowertens = round(((math.floor(self.tracked_balance / self.tens))* self.tens), 8)
+            
+            # Auto-align target anchors on resume to protect against small sync slips
+            self.oldsevensbalance = round(self.tracked_balance, 8)
+            self.oldupbalance = float(self.lowertens)
+            self.olddownbalance = float(self.lowertens)
             self.log(f"⚖️ Deviation Corrected: {drift:.8f}")
         else:
             self.log("🆕 Zero-baseline initialization execution...")
-            self.cat = self.tabby
-            self.fart = 1
+            self.neXtbet = self.basebet
+            self.basetimes = 14
             self.shadow = 0.0
             self.tracked_balance = real_bal
             self.initial_balance = real_bal
-            self.mighty = round(((math.floor(self.tracked_balance / self.tens))* self.tens), 8)
+            self.lowertens = round(((math.floor(self.tracked_balance / self.tens))* self.tens), 8)
             self.next_compound = self.tracked_balance * 1.24
-            self.felix = float(self.mighty) 
-            self.orgy = float(self.mighty) 
-            self.orgytwo = float(self.mighty)
+            self.oldsevensbalance = float(self.lowertens) 
+            self.oldupbalance = float(self.lowertens) 
+            self.olddownbalance = float(self.lowertens)
         
         self.last_balance = real_bal
 
@@ -316,7 +367,7 @@ class BotEngine(QMainWindow):
         try:
             with open(STATE_FILE, "r") as f:
                 data = json.load(f)
-                keys = ["cat", "tabby", "felix", "orgy", "orgytwo", "tracked_balance", "initial_balance", "last_balance", "next_compound", "uppers", "downers"]
+                keys = ["neXtbet", "basebet", "oldsevensbalance", "oldupbalance", "olddownbalance", "tracked_balance", "initial_balance", "last_balance", "next_compound", "uppers", "downers"]
                 for k in keys:
                     if k in data: data[k] = float(data[k])
                 return data
@@ -324,56 +375,61 @@ class BotEngine(QMainWindow):
             return None
 
     def toggle_engine(self):
+        if self.is_reconnecting: return
         self.is_running = True
-        self.log(f"🚀 ENGINE ONLINE. Operational Unit: {self.cat:.8f}")
+        self.log(f"🚀 ENGINE ONLINE. Operational Unit: {self.neXtbet:.8f}")
         
         self.last_change_time = time.time()
         self.last_activity_time = time.time()
         self.heartbeat = True
         self.bet_in_flight = False  
         
-        # Fire structural action loop
-        self.engine_timer.start(150)
+        QTimer.singleShot(1000, self.process_tick) 
 
     def lol_poop(self):
-        self.log("🚨 Websocket stall caught! Re-establishing clean browser runtime context...")
-        self.engine_timer.stop()
-        self.bet_in_flight = False
-        
-        self.prev_balance = None
-        self.prev_wins = None
-        self.prev_losses = None
-        
-        self.browser_view.reload()
-        QTimer.singleShot(15000, self.devils_pooped)
-    
-    def devils_pooped(self):
-        self.kjool_look()
+        self.trigger_network_reconnect()
 
     def process_tick(self):
+        if self.is_reconnecting or not self.is_running: 
+            return
+            
         self.evaluate_financial_sync()
         if time.time() - self.last_activity_time > 45:
             self.last_activity_time = time.time()
             self.lol_poop()
             return
+            
         if self.heartbeat and not self.bet_in_flight:
             self.last_activity_time = time.time()
-            self.mighty = round(((math.floor(self.tracked_balance / self.tens))* self.tens), 8)
-            if ((self.tracked_balance > (self.mighty + self.sevens)) and (self.tracked_balance < (self.mighty + self.eights)) and (self.tracked_balance != self.felix)):
-                self.cat = round((self.cat * 2), 8)
-                self.felix = float(self.tracked_balance) 
-            if (self.tracked_balance<self.orgytwo):
-                self.orgytwo = float(self.tracked_balance) 
-            if (self.tracked_balance>self.orgy):
-                self.orgy = float(self.tracked_balance) 
-            if (self.cat >= (self.tabby*7)): 
-               if ((self.tracked_balance<=self.orgytwo) or (self.tracked_balance>=self.orgy)):
-                  if (self.tracked_balance != self.felix):
-                    self.cat = self.tabby
-                    self.felix = float(self.mighty)
-                    self.orgy = float(self.tracked_balance) 
-                    self.orgytwo = float(self.tracked_balance) 
-            if ((self.tracked_balance>=(self.felix+(self.cat*10))) or (self.tracked_balance<=(self.felix-(self.cat*10)))):
+            self.lowertens = round(((math.floor(self.tracked_balance / self.tens))* self.tens), 8)
+            if ((self.tracked_balance > (self.lowertens + self.sevens)) and (self.tracked_balance < (self.lowertens + self.eights)) and (self.tracked_balance != self.oldsevensbalance)):
+                self.neXtbet = round((self.neXtbet * 2), 8)
+                self.oldsevensbalance = float(self.tracked_balance) 
+
+            if (self.neXtbet >= (self.basebet*self.basetimes)):
+                if (self.tracked_balance>self.oldupbalance):
+                  self.neXtbet = self.basebet
+                  self.oldsevensbalance = float(self.tracked_balance)
+                  self.oldupbalance = float(self.tracked_balance) 
+                  self.olddownbalance = float(self.tracked_balance)  
+                  if self.basetimes>4:
+                     self.basetimes = self.basetimes/2
+                if (self.tracked_balance<self.olddownbalance):
+                  self.neXtbet = self.basebet
+                  self.oldsevensbalance = float(self.tracked_balance)
+                  self.oldupbalance = float(self.tracked_balance) 
+                  self.olddownbalance = float(self.tracked_balance)
+                  if self.basetimes<24:
+                     self.basetimes = self.basetimes*2
+            if (self.tracked_balance>self.oldupbalance):
+                self.oldupbalance = float(self.tracked_balance) 
+            if (self.tracked_balance<self.olddownbalance):
+                self.olddownbalance = float(self.tracked_balance) 
+            
+                
+
+            # Widen the immediate security trap buffer window slightly to allow standard variance
+            if ((self.tracked_balance >= (self.oldsevensbalance + (self.neXtbet * 10))) or (self.tracked_balance <= (self.oldsevensbalance - (self.neXtbet * 10)))):
                 self.log("hacker involved please fuck off hacker")
                 self.heartbeat = False
                 self.engine_timer.stop()
@@ -396,12 +452,13 @@ class BotEngine(QMainWindow):
                 if(b_min && pct_chance && pct_bet && a_lo) {{
                     b_min.click();
                     pct_chance.value = '49.5';
-                    pct_bet.value = '{self.cat:.8f}';
+                    pct_bet.value = '{self.neXtbet:.8f}';
                     a_lo.click();
                 }}
             }})();
             """
-            self.browser_view.page().runJavaScript(jsfool) 
+            self.browser_view.page().runJavaScript(jsfool)
+        QTimer.singleShot(1, self.process_tick) 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
