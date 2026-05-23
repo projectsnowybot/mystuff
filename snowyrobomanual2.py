@@ -399,7 +399,7 @@ class BotEngine(QMainWindow):
             self.lol_poop()
             return
             
-        if self.heartbeat and not self.bet_in_flight:
+        if self.heartbeat and (not self.bet_in_flight) and (self.tracked_balance != self.shadow):
             self.last_activity_time = time.time()
             self.lowertens = round(((math.floor(self.tracked_balance / self.tens))* self.tens), 8)
             if (self.tracked_balance >= (self.oldupbalance+(self.tens*self.basetimes))):
