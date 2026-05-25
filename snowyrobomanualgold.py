@@ -422,12 +422,6 @@ class BotEngine(QMainWindow):
                 self.engine_timer.stop()
                 sys.exit()
                 return  
-            if (self.tracked_balance>=(self.initial_balance*2.4)): 
-                self.last_activity_time = time.time()
-                self.heartbeat = False
-                os.remove(STATE_FILE)
-                self.lol_poop()
-                return 
             self.shadow = float(self.tracked_balance) 
             self.save_state()
             self.bet_in_flight = True
