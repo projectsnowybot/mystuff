@@ -326,7 +326,7 @@ class BotEngine(QMainWindow):
             self.basebet = self.state_data.get("basebet")
         else:
             balank = float(balance)
-            self.basebet = round((balank/320), 8)
+            self.basebet = round((balank/144000), 8)
         
         self.tens = self.basebet * 10.0
         self.sevens = self.basebet * 6.9
@@ -411,7 +411,7 @@ class BotEngine(QMainWindow):
         if self.heartbeat and (not self.bet_in_flight) and (self.tracked_balance != self.shadow):
             self.last_activity_time = time.time()
             self.lowertens = round(((math.floor(self.tracked_balance / self.tens))* self.tens), 8)
-            if (self.tracked_balance<=(self.neXtbet*4)):
+            if (self.tracked_balance<=(self.neXtbet*3200)):
                 self.neXtbet = self.basebet
                 self.oldsevensbalance = float(self.lowertens) 
             if ((self.tracked_balance > (self.lowertens + self.sevens)) and (self.tracked_balance < (self.lowertens + self.eights)) and (self.tracked_balance != self.oldsevensbalance)):
