@@ -23,6 +23,7 @@ p = getpass.getpass("Enter password: ")
 
 URL = "https://just-dice.com"
 STATE_FILE = ".snowybot.json"
+# Check if file exists to avoid FileNotFoundError
 
 
 class WebBridge(QObject):
@@ -48,7 +49,12 @@ class BotEngine(QMainWindow):
         self.tracked_balance = 0.0
         self.next_compound = 0.0
         self.last_change_time = time.time()
-        
+        if os.path.exists(STATE_FILE ):
+            os.remove(STATE_FILE)
+            print("File deleted successfully")
+        else:
+            print("The file does not exist")
+
         self.prev_balance = None
         self.prev_wins = None
         self.prev_losses = None
