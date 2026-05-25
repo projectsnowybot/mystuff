@@ -385,65 +385,63 @@ class BotEngine(QMainWindow):
         self.heartbeat = True
         self.bet_in_flight = False  
         
-        QTimer.singleShot(1000, self.process_tick) 
+        QTimer.singleShot(150, self.process_tick) 
 
     def lol_poop(self):
         self.trigger_network_reconnect()
 
     def process_tick(self):
         if self.is_reconnecting or not self.is_running: 
+            self.heartbeat = False
             return
             
         self.evaluate_financial_sync()
         if time.time() - self.last_activity_time > 45:
             self.last_activity_time = time.time()
+            self.heartbeat = False
             self.lol_poop()
             return
             
         if self.heartbeat and (not self.bet_in_flight) and (self.tracked_balance != self.shadow):
             self.last_activity_time = time.time()
             self.lowertens = round(((math.floor(self.tracked_balance / self.tens))* self.tens), 8)
-            if ((self.tracked_balance-(self.neXtbet*2))<self.neXtbet):
+            if ((self.tracked_balance-(self.neXtbet*4))<self.neXtbet):
                 self.neXtbet = self.basebet
                 self.oldsevensbalance = float(self.lowertens) 
-                self.olddownbalance = float(self.tracked_balance)
-            if ((self.tracked_balance>=self.olddownbalance) and ((self.tracked_balance-(self.neXtbet*4))<self.neXtbet)):
-                self.neXtbet = self.basebet
-                self.oldsevensbalance = float(self.lowertens) 
-                self.olddownbalance = float(self.tracked_balance)
             if ((self.tracked_balance > (self.lowertens + self.sevens)) and (self.tracked_balance < (self.lowertens + self.eights)) and (self.tracked_balance != self.oldsevensbalance)):
                 self.neXtbet = round((self.neXtbet * 2), 8)
                 self.oldsevensbalance = float(self.tracked_balance)     
-            if ((self.tracked_balance >= (self.oldsevensbalance + (self.neXtbet * 10))) or (self.tracked_balance <= (self.oldsevensbalance - (self.neXtbet * 10)))):
-                self.log("hacker involved please fuck off hacker")
-                self.heartbeat = False
-                self.engine_timer.stop()
-                return
-            if (self.tracked_balance>=(self.initial_balance*2.4)): 
+            if (self.tracked_balance>=1440): 
                 self.log("winner winner chicken dinner")
-                self.heartbeat = False
                 self.engine_timer.stop()
                 sys.exit()
-                return
+                return  
+            if (self.tracked_balance>=(self.initial_balance*2.4)): 
+                self.last_activity_time = time.time()
+                self.heartbeat = False
+                os.remove(STATE_FILE)
+                self.lol_poop()
+                return 
             self.shadow = float(self.tracked_balance) 
             self.save_state()
             self.bet_in_flight = True
-            jsfool = f"""
-            (function() {{
-                var b_min = document.getElementById('b_min');
-                var pct_chance = document.getElementById('pct_chance');
-                var pct_bet = document.getElementById('pct_bet');
-                var a_lo = document.getElementById('a_lo');
+            if self.heartbeat:
+               jsfool = f"""
+               (function() {{
+                   var b_min = document.getElementById('b_min');
+                   var pct_chance = document.getElementById('pct_chance');
+                   var pct_bet = document.getElementById('pct_bet');
+                   var a_lo = document.getElementById('a_lo');
                 
-                if(b_min && pct_chance && pct_bet && a_lo) {{
-                    b_min.click();
-                    pct_chance.value = '49.5';
-                    pct_bet.value = '{self.neXtbet:.8f}';
-                    a_lo.click();
-                }}
-            }})();
-            """
-            self.browser_view.page().runJavaScript(jsfool)
+                   if(b_min && pct_chance && pct_bet && a_lo) {{
+                       b_min.click();
+                       pct_chance.value = '49.5';
+                       pct_bet.value = '{self.neXtbet:.8f}';
+                       a_lo.click();
+                   }}
+               }})();
+               """
+               self.browser_view.page().runJavaScript(jsfool)
         QTimer.singleShot(150, self.process_tick) 
 
 if __name__ == "__main__":
