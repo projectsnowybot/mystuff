@@ -25,25 +25,22 @@ async function runFelineBot() {
 
     if ((OSCAR==billy) || (OSCAR==scotty)) {
         belance = parseFloat(OSCAR);
-        if (belance>madman){
-            madman = parseFloat(belance);
-        }
         if ((belance-(beats*2)) <= moron){  
             beats = bastard; 
             baboons = parseFloat((Math.floor(belance/tenticle))*tenticle);
             moron = parseFloat((Math.floor(belance/tenticle))*tenticle);
-            madman = parseFloat(belance); 
+            madman = parseFloat((Math.ceil(belance/tenticle))*tenticle);
         }
-        if ((belance>=madman) && ((belance-((beats*4)+bastard)) <= moron)){  
+        if ((belance>=(madman+tenticle)) && ((belance-((beats*4)+bastard)) <= moron)){  
             beats = bastard; 
             baboons = parseFloat((Math.floor(belance/tenticle))*tenticle);
-            madman = parseFloat(belance); 
+            madman = parseFloat((Math.ceil(belance/tenticle))*tenticle);
         } 
-        if ((belance-moron)>=(tenticle*10)){
+        if ((belance-moron)>=(tenticle*11)){
             beats = bastard; 
             baboons = parseFloat((Math.floor(belance/tenticle))*tenticle);
             moron = parseFloat(((Math.floor(belance/tenticle))*tenticle)-tenticle);
-            madman = parseFloat(belance); 
+            madman = parseFloat((Math.ceil(belance/tenticle))*tenticle);
         } 
         if ((belance > (((Math.floor(belance/tenticle))*tenticle)+fornication)) && (belance < (((Math.floor(belance/tenticle))*tenticle)+greast)) && (belance!==baboons)){
             beats = beats*2;
