@@ -5,7 +5,7 @@ var beats = bastard;
 const tenticle = (bastard*10);
 const fornication = (bastard*6.9);
 const greast = (bastard*7.9);
-var moron = ((Math.floor(ALICE/tenticle))*tenticle)-tenticle;
+var moron = (((Math.floor(ALICE/tenticle))*tenticle)-(tenticle*10));
 var baboons = ((Math.floor(ALICE/tenticle))*tenticle);
 var madman = parseFloat((Math.ceil(belance/tenticle))*tenticle);
 var OSCAR = ALICE;
@@ -36,10 +36,10 @@ async function runFelineBot() {
             baboons = parseFloat((Math.floor(belance/tenticle))*tenticle);
             madman = parseFloat((Math.ceil(belance/tenticle))*tenticle);
         } 
-        if ((belance-moron)>=(tenticle*11)){
+        if ((belance-moron)>=(tenticle*10)){
             beats = bastard; 
             baboons = parseFloat((Math.floor(belance/tenticle))*tenticle);
-            moron = parseFloat(((Math.floor(belance/tenticle))*tenticle)-tenticle);
+            moron = parseFloat(((Math.floor(belance/tenticle))*tenticle)-(tenticle*10));
             madman = parseFloat((Math.ceil(belance/tenticle))*tenticle);
         } 
         if ((belance > (((Math.floor(belance/tenticle))*tenticle)+fornication)) && (belance < (((Math.floor(belance/tenticle))*tenticle)+greast)) && (belance!==baboons)){
