@@ -39,7 +39,7 @@ async function runFelineBot() {
             baboons = parseFloat((Math.floor(belance/tenticle))*tenticle);
             madman = parseFloat(belance); 
         } 
-        if (belance-moron)>=(tenticle*24))
+        if ((belance-moron)>=(tenticle*24)){
             beats = bastard; 
             baboons = parseFloat((Math.floor(belance/tenticle))*tenticle);
             moron = parseFloat(((Math.floor(belance/tenticle))*tenticle)-tenticle);
