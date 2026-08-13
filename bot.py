@@ -115,7 +115,7 @@ def init_bot(d, u, p, c):
 
 
 async def awesome(d, u, p, c):
-    global origiun, fox, kitty, bear, kool, sevens, eights, fart, scratchPad, litterbox, mile, lastLeap, xine, yibida, pile, flea, beats, folly, jolly, roger, prevbet, fugoo, heartbeat
+    global origiun, fox, kitty, ts, LFV, bear, mook, kool, sevens, eights, fart, scratchPad, litterbox, mile, lastLeap, xine, yibida, pile, flea, beats, folly, jolly, roger, prevbet, fugoo, heartbeat
     xine = yibida = 1
     heartbeat = True
     await asyncio.sleep(1)
@@ -137,46 +137,63 @@ async def awesome(d, u, p, c):
         st = load_state()
         if st:
             print("[System] Loaded previous state from disk.")
-            origiun, kitty, bear, fart = (
-                st.get("origiun", bal),
-                st["kitty"],
-                st["bear"],
-                st["fart"],
-            )
-            scratchPad, litterbox, pile, flea, mile, lastLeap = (
-                st["scratchPad"],
-                st["litterbox"],
-                st["pile"],
-                st["flea"],
-                st["mile"],
-                st["lastLeap"],
-            )
-            v = float(d.find_element(By.ID, "pct_balance").get_attribute("value"))
-            beats, fox = st["beats"], v
-            jolly, fugoo, prevbet, roger = flea - fox, 0, kitty, bear * beats
-            folly, scratchPad, litterbox = jolly + roger, v, v
+            origiun = st.get("origiun", bal)
+            bear = st["bear"]
+            kitty = st["kitty"]
+            fart = st["fart"]
+            kool = bear*10
+            sevens = bear*6.9
+            eights = bear*7.9
+            grr = float(d.find_element(By.ID, "pct_balance").get_attribute("value"))
+            fox = grr
+            mile = st["mile"]
+            lastLeap = st["lastLeap"]
+            beats = 0
+            mook = grr
+            jolly = 0
+            fugoo = 0
+            prevbet = 0
+            roger = 0
+            folly = 0
+            LFV = 0
+            scratchPad = grr
+            litterbox = grr
+            ts = time.time()
         else:
             print("[System] Initializing fresh state parameters.")
-            origiun = fox = flea = float(bal)
+            origiun = float(bal)
+            fox = float(bal)
+            flea = float(bal)
             bear = kitty = round(origiun / 144000, 8)
-            fart = 1
-            fugoo = beats = 0
-            prevbet, jolly, roger = kitty, flea - fox, bear * beats
-            folly = jolly + roger
-            kool, sevens, eights = bear * 10, bear * 6.9, bear * 7.9
-            scratchPad = litterbox = fox
-            mile = lastLeap = (math.floor(origiun / kool)) * kool
-            pile = ((math.floor(flea / kool)) * kool) - kool
+            fart = 6
+            fugoo = 0
+            beats = 0
+            prevbet = 0
+            jolly = 0
+            roger = 0
+            folly = 0
+            LFV = 0
+            mook = float(bal)
+            kool = bear*10
+            sevens = bear*6.9
+            eights = bear*7.9
+            scratchPad = fox
+            litterbox = fox
+            mile = ((math.floor(origiun / kool)) * kool)
+            lastLeap = ((math.floor(origiun / kool)) * kool)
+            ts = time.time()
+
+        await asyncio.sleep(1)
         await runCatBot(d, u, p, c)
 
 
 async def runCatBot(d, u, p, c):
-    global yibida, xine, fox, LFV, kitty, lastLeap, scratchPad, litterbox, origiun, mile, fart, kool, bear, sevens, eights, pile, flea, beats, folly, jolly, roger, prevbet, fugoo, heartbeat
-    ts = time.time()
-    print("[System] Bot loop started successfully.")
-    while yibida == xine:
-        await asyncio.sleep(1)
+     global yibida, xine, ts, fox, mook, LFV, kitty, lastLeap, scratchPad, litterbox, origiun, mile, fart, kool, bear, sevens, eights, pile, flea, beats, folly, jolly, roger, prevbet, fugoo, heartbeat
+     print("[System] Bot loop started successfully.")
+     yibida = xine = 1
+     while (yibida==xine):
         mook = float(d.find_element(By.ID, "pct_balance").get_attribute("value"))
+        await asyncio.sleep(0.01)
         if (mook!=fugoo):
             fox = float(mook)
             heartbeat = True
@@ -204,7 +221,7 @@ async def runCatBot(d, u, p, c):
                 fart = 0
                 kitty = kitty * 2
 
-            if fox >= 14400:
+            if (fox >= 14400):
                 print("🔄 winner winner chicken dinner...")
                 heartbeat = False
                 d.quit()
@@ -234,12 +251,15 @@ async def runCatBot(d, u, p, c):
                   }
                 )
                 fugoo = fox
+
             if fox != LFV:
-                LFV, ts = fox, time.time()
+                LFV = fox
+                ts = time.time()
             if time.time() - ts > 55:
                 print("[System] Inactivity timeout reached, refreshing page...")
-                ts, yibida = time.time(), 2
-                while yibida == 2:
+                ts = time.time()
+                yibida = 2
+                while (yibida==2):
                     try:
                         d.refresh()
                         await asyncio.sleep(35)
@@ -280,7 +300,7 @@ def daemonize():
     si = open(os.devnull, 'r')
     so = open(LO, 'a+', encoding='utf-8')
     se = open(LE, 'a+', encoding='utf-8')
-     
+
     os.dup2(si.fileno(), sys.stdin.fileno())
     os.dup2(so.fileno(), sys.stdout.fileno())
     os.dup2(se.fileno(), sys.stderr.fileno())
